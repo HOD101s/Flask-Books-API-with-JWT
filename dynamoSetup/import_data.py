@@ -2,7 +2,7 @@ import json
 import boto3
 import time
 
-table_name = 'data'
+table_name = 'data2'
 with open("dynamoSetup/data.json", encoding="utf8") as f:
     json_data = json.load(f)
 
@@ -24,12 +24,7 @@ response = ddb_client.create_table(
         {
             'AttributeName': 'bookID',
             'KeyType': 'HASH'
-        },
-        {
-            'AttributeName': 'title',
-            'KeyType': 'RANGE'
-        },
-
+        }
     ],
     GlobalSecondaryIndexes=[
         {
