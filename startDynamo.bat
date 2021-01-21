@@ -1,0 +1,1 @@
+start cmd /c java -Djava.library.path=./DynamoDBLocal_lib -jar "D:\ProgramFiles\Amazon\DynamoDB Local\DynamoDBLocal.jar" -sharedDb
