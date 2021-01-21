@@ -18,8 +18,53 @@ usertable = ddb.Table('datausers')
 bookstable = ddb.Table('data2')
 
 
-@app.route('/get_books', methods=['POST'])
-# @token_required
+# for token authentication
+def token_required(f):
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        if 'token' in kwargs:
+            try:
+                jwt.decode(kwargs['token'], app.config['SECRET_KEY'], algorithms=['HS256'])
+                return f(*args, **kwargs)
+            except:
+                return jsonify({'message': 'failed to authenticate request', 'error_code': 'invalid token'}), 300
+        elif 'token' in request.cookies:
+            try:
+                jwt.decode(request.cookies.get('token'), app.config['SECRET_KEY'], algorithms=['HS256'])
+                return f(*args, **kwargs)
+            except:
+                return jsonify({'message': 'failed to authenticate request', 'error_code': 'invalid token'}), 300
+        else:
+            return jsonify({'message': 'failed to authenticate request', 'error_code': 'invalid token'}), 300
+
+    return decorated
+
+
+@app.route('/checktoken/<string:token>', methods=['GET'])
+@token_required
+def checktoken(**kwargs):
+    return jsonify({'message': 'token verified'}), 200
+
+
+@app.route('/login', methods=['POST'])
+def login():
+    try:
+        query = usertable.query(
+            IndexName='username',
+            KeyConditionExpression=Key('username').eq(request.form['username']),
+            FilterExpression=Attr('password').eq(hashlib.sha256(request.form['password'].encode('utf-8')).hexdigest())
+        )
+        if query["Items"]:
+            token = jwt.encode({'username': request.form['username'], 'id': query["Items"][0]['id'],
+                        'exp': datetime.datetime.utcnow() + datetime.timedelta(minutes=15)}, app.config['SECRET_KEY'])
+            return jsonify({'token': token, 'message': 'token generated'}), 200
+        return jsonify({'message': 'failed to authenticate', 'error_code': 'Failed Auth'}), 200
+    except:
+        return jsonify({'message': 'failed to connect to db'}), 500
+
+
+@app.route('/get_books/<string:token>', methods=['POST'])
+@token_required
 def get_books(**kwargs):
     try:
         # get book by title
@@ -48,8 +93,8 @@ def get_books(**kwargs):
         return jsonify({'message': 'failed to connect to db'}), 500
 
 
-@app.route('/get_book', methods=['GET'])
-# @token_required
+@app.route('/get_book/<string:token>', methods=['GET'])
+@token_required
 def get_book(**kwargs):
     try:
         # get book by ID
@@ -64,8 +109,8 @@ def get_book(**kwargs):
         return jsonify({'message': 'failed to connect to db'}), 500
 
 
-@app.route('/add_book', methods=['POST'])
-# @token_required
+@app.route('/add_book/<string:token>', methods=['POST'])
+@token_required
 def add_book(**kwargs):
     try:
         # build book info dict and add to bookstable
@@ -86,8 +131,8 @@ def add_book(**kwargs):
         return jsonify({'message': 'failed to connect to db'}), 500
 
 
-@app.route('/update', methods=['POST'])
-# @token_required
+@app.route('/update_book/<string:token>', methods=['POST'])
+@token_required
 def update_book(**kwargs):
     try:
         # get book by ID
@@ -98,7 +143,7 @@ def update_book(**kwargs):
         if not query['Items']:
             return jsonify({'message': 'No Matching Id', 'error_code': 'Book not found'}), 200
 
-        #build update dict
+        # build update dict
         updatedict = {
             ":newtitle": request.form['uptitle'] if request.form['uptitle']!='' else query['Items'][0]['title'],
             ":auth": request.form['upauthor'] if request.form['upauthor']!='' else query['Items'][0]['authors'],
@@ -124,7 +169,101 @@ def update_book(**kwargs):
         return jsonify({'message': 'failed to connect to db'}), 500
 
 
+@app.route('/add_favourite/<string:token>', methods=['POST'])
+@token_required
+def add_favourite(**kwargs):
+    try:
+        # check if book exists
+        query = bookstable.query(
+            KeyConditionExpression=Key('bookID').eq(request.form['favbookID'])
+        )
+        # if exists continue
+        if query['Items']:
+            # decode token for user details
+            data = jwt.decode(kwargs['token'], app.config['SECRET_KEY'], algorithms=['HS256'])
+            userdata = usertable.query(
+                KeyConditionExpression=Key('id').eq(data['id'])
+            )
 
+            # if favourites exists update list else create attribute
+            if 'favourites' not in userdata['Items'][0]:
+                usertable.update_item(
+                    Key={
+                        'id': data['id'],
+                    },
+                    UpdateExpression='SET #attr1 = :val1',
+                    ExpressionAttributeNames={'#attr1': 'favourites'},
+                    ExpressionAttributeValues={':val1': [request.form['favbookID']]}
+                )
+            elif request.form['favbookID'] not in userdata['Items'][0]['favourites']:
+                usertable.update_item(
+                    Key={
+                        'id': data['id'],
+                    },
+                    UpdateExpression='SET #attr1 = list_append(#attr1, :val1)',
+                    ExpressionAttributeNames={'#attr1': 'favourites'},
+                    ExpressionAttributeValues={':val1': [request.form['favbookID']]}
+                )
+            return jsonify({'message': 'added book to favourites'}), 200
+        return jsonify({'message': 'failed to add book', 'error_code': 'Book not found'}), 200
+    except:
+        return jsonify({'message': 'failed to add book', 'error_code': 'failed to add book'}), 200
+
+
+@app.route('/remove_favourite/<string:token>', methods=['POST'])
+@token_required
+def remove_favourite(**kwargs):
+    try:
+        # check if book exists
+        query = bookstable.query(
+            KeyConditionExpression=Key('bookID').eq(request.form['rembookID'])
+        )
+
+        if not query['Items']:
+            return jsonify({'message': 'failed to remove book', 'error_code': 'Book Doesnt exist'}), 200
+
+        # decode token for user details
+        data = jwt.decode(kwargs['token'], app.config['SECRET_KEY'], algorithms=['HS256'])
+        userdata = usertable.query(
+            KeyConditionExpression=Key('id').eq(data['id']),
+        )
+        # get item index
+        index = userdata["Items"][0]['favourites'].index(request.form['rembookID'])
+
+        if index is None:
+            return jsonify({'message': 'failed to remove book', 'error_code': 'Book Doesnt exist in favourites'}), 200
+
+        # remove item
+        usertable.update_item(
+            Key={
+                'id': data['id'],
+            },
+            UpdateExpression=f'REMOVE favourites[{index}]',
+        )
+        return jsonify({'message': 'Removed book'}), 200
+    except:
+        return jsonify({'message': 'failed to remove book', 'error_code': 'failed to remove book'}), 200
+
+
+@app.route('/get_favourite/<string:token>', methods=['GET'])
+@token_required
+def get_favourite(**kwargs):
+    # decode token for user details
+    data = jwt.decode(kwargs['token'], app.config['SECRET_KEY'], algorithms=['HS256'])
+    userdata = usertable.query(
+        KeyConditionExpression=Key('id').eq(data['id'])
+    )
+    resp = []
+    # if favourites doesnt exist
+    if 'favourites' not in userdata['Items'][0]:
+        return jsonify({'message': 'No favourites exists', 'error_code': 'Favourites is Empty'}), 200
+    # build response
+    for id in userdata['Items'][0]['favourites']:
+        query = bookstable.query(
+            KeyConditionExpression=Key('bookID').eq(id)
+        )
+        resp.append(query['Items'][0])
+    return jsonify(resp), 200
 
 
 if __name__ == '__main__':

@@ -2,7 +2,7 @@ import json
 import boto3
 import time
 
-table_name = 'data2'
+table_name = 'data'
 with open("dynamoSetup/data.json", encoding="utf8") as f:
     json_data = json.load(f)
 
