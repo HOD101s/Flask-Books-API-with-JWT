@@ -205,4 +205,5 @@ cython_debug/
 # Cython debug symbols
 
 .idea
-.vscode
+.vscodeg
+shared-local-instance.db
