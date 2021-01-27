@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>ECS Flask</title>
+</head>
+<body>
+    <div class="content">
+        <h1>Filter Results</h1>
+        <div id="filterresult"></div>
+        <form action="javascript:filter()" autocomplete="off">
+            <input type="text" name="filter" id="filter" placeholder="bookname">
+            <input type="text" name="filterstart" id="filterstart" placeholder="start_page">
+            <input type="text" name="filtersize" id="filtersize" placeholder="page_size">
+            <input type="submit" value="Get Books">
+        </form>
+
+        <h1>Get Book</h1>
+        <div id="getbookresult"></div>
+        <form action="javascript:getbook()" autocomplete="off">
+            <input type="text" name="getbookid" id="getbookid" placeholder="Book ID" required>
+            <input type="submit" value="Get Book" />
+        </form>
+
+        <h1>Add Book</h1>
+        <div id="addbookresult"></div>
+        <form action="javascript:addbook()" autocomplete="off">
+            <input type="text" name="addtitle" id="addtitle" placeholder="title" required>
+            <input type="text" name="addauthor" id="addauthor" placeholder="author" required>
+            <input type="text" name="addrating" id="addrating" placeholder="average rating" required>
+            <input type="text" name="addisbn" id="addisbn" placeholder="isbn" required>
+            <input type="text" name="addlangcode" id="addlangcode" placeholder="language code" required>
+            <input type="text" name="addratingcount" id="addratingcount" placeholder="rating count" required>
+            <input type="text" name="addprice" id="addprice" placeholder="price" required>
+            <input type="submit" value="Add Book" />
+        </form>
+
+        <h1>Update Book</h1>
+        <div id="updateresult"></div>
+        <form action="javascript:update()" autocomplete="off">
+            <input type="text" name="updatebookID" id="updatebookID" placeholder="Original Book ID" required>
+            <input type="text" name="uptitle" id="uptitle" placeholder="title" required>
+            <input type="text" name="upauthor" id="upauthor" placeholder="author" >
+            <input type="text" name="uprating" id="uprating" placeholder="average rating" >
+            <input type="text" name="upisbn" id="upisbn" placeholder="isbn" >
+            <input type="text" name="uplangcode" id="uplangcode" placeholder="language code" >
+            <input type="text" name="upratingcount" id="upratingcount" placeholder="rating count" >
+            <input type="text" name="upprice" id="upprice" placeholder="price" >
+            <input type="submit" value="Update" />
+        </form>
+
+        <h1>Add Book to Favourite</h1>
+        <div id="addtofavresult"></div>
+        <form action="javascript:addtofav()" autocomplete="off">
+            <input type="text" name="favbookID" id="favbookID" placeholder="favourite bookid" required>
+            <input type="submit" value="Add to Favourites" />
+        </form>
+
+        <h1>Remove Book from Favourite</h1>
+        <div id="remfromfavresult"></div>
+        <form action="javascript:remfromfav()" autocomplete="off">
+            <input type="text" name="rembookID" id="rembookID" placeholder="favourite bookid" required>
+            <input type="submit" value="Remove from Favourites" />
+        </form>
+
+        <h1>Get Favourites</h1>
+        <div id="getfavresult"></div>
+        <form action="javascript:getfav()" autocomplete="off">
+            <input type="submit" value="Get Favourites" />
+        </form>
+
+        <script>
+            function filter(){
+                let data = "filtername="+encodeURI(document.getElementById('filter').value)+"&start_page="+encodeURI(document.getElementById('filterstart').value)+"&page_size="+encodeURI(document.getElementById('filtersize').value);
+                let token = getCookie('token');
+                if(token===''){
+                    token = '-';
+                }
+                sendreq(data, "POST", "http://127.0.0.1:5000/get_books/"+token, 'filterresult', 'filter');
+            }
+
+            function getbook(){
+                let token = getCookie('token');
+                if(token===''){
+                    token = '-';
+                }
+                sendreq(null, "GET", "http://127.0.0.1:5000/get_book/"+token+'?bookID='+encodeURI(document.getElementById('getbookid').value), 'getbookresult', 'getbook');
+            }
+
+            function addbook(){
+                let i;
+                let fields = ['addtitle', 'addauthor', 'addrating', 'addisbn', 'addlangcode', 'addratingcount', 'addprice']
+                let data = "addtitle="+encodeURI(document.getElementById('addtitle').value);
+                for(i=1;i<fields.length;i++){
+                    data += `&${fields[i]}=`+encodeURI(document.getElementById(fields[i]).value);
+                }
+                let token = getCookie('token');
+                if(token===''){
+                    token = '-';
+                }
+                sendreq(data, "POST", "http://127.0.0.1:5000/add_book/"+token, 'addbookresult', 'addbook');
+            }
+
+            function update(){
+                let i;
+                let fields = ['uptitle', 'upauthor', 'uprating', 'upisbn', 'uplangcode', 'upratingcount', 'upprice'];
+                let data = "updatebookID="+encodeURI(document.getElementById('updatebookID').value);
+                for(i=0;i<fields.length;i++){
+                    data += `&${fields[i]}=`+encodeURI(document.getElementById(fields[i]).value);
+                }
+                let token = getCookie('token');
+                if(token===''){
+                    token = '-';
+                }
+                sendreq(data, "POST", "http://127.0.0.1:5000/update_book/"+token, 'updateresult', 'update');
+            }
+
+            function addtofav(){
+                let data = "favbookID="+encodeURI(document.getElementById('favbookID').value);
+                let token = getCookie('token');
+                if(token===''){
+                    token = '-';
+                }
+                sendreq(data, "POST", "http://127.0.0.1:5000/add_favourite/"+token, 'addtofavresult', 'addtofav');
+            }
+
+            function remfromfav(){
+                let data = "rembookID="+encodeURI(document.getElementById('rembookID').value);
+                let token = getCookie('token');
+                if(token===''){
+                    token = '-';
+                }
+                sendreq(data, "POST", "http://127.0.0.1:5000/remove_favourite/"+token, 'remfromfavresult', 'remfromfav');
+            }
+
+            function getfav(){
+                let token = getCookie('token');
+                if(token===''){
+                    token = '-';
+                }
+                sendreq(null, "GET", "http://127.0.0.1:5000/get_favourite/"+token, 'getfavresult', 'getfav');
+            }
+
+            function sendreq(data, method, endpoint, targetDivId, optype){
+                let xhr = new XMLHttpRequest();
+                xhr.open(method, endpoint, true);
+                xhr.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
+                xhr.setRequestHeader('Access-Control-Allow-Origin','*');
+                xhr.setRequestHeader('Access-Control-Allow-Methods',method);
+                xhr.setRequestHeader('Access-Control-Allow-Headers','*');
+                xhr.onload = function(e){reqHandler(JSON.parse(this.responseText), this.status, targetDivId, optype)};
+                if(method === 'GET')
+                    xhr.send()
+                else if(method === 'POST')
+                    xhr.send(data);
+            }
+
+            function reqHandler(resp, status, targetId, optype){
+                if (status === 200){
+                    if(resp.hasOwnProperty('error_code')){
+                        document.getElementById(targetId).innerHTML = `<h4>${resp['error_code']}</h4>`;
+                    } else{
+                        let i = 0;
+                        let htmlresp = '';
+                        switch(optype){
+                            case 'filter':
+                                resp.map((r) => {
+                                    htmlresp += `${i+1}. Book : ${r['title']}<br>Author : ${r['authors']}<br>BookID : ${r['bookID']}<br>price : ${r['price']}<br>Ratings Coutn : ${r['ratings_count']}<br>Average Rating : ${r['average_rating']}<br>Language : ${r['language_code']}<br>isbn : ${r['isbn']}<br><br>`;
+                                    i+=1;
+                                })
+                                document.getElementById(targetId).innerHTML = htmlresp;
+                                break;
+                            case 'getbook':
+                                document.getElementById(targetId).innerHTML = `Book : ${resp['title']}<br>Author : ${resp['authors']}<br>BookID : ${resp['bookID']}<br>price : ${resp['price']}<br>Ratings Coutn : ${resp['ratings_count']}<br>Average Rating : ${resp['average_rating']}<br>Language : ${resp['language_code']}<br>isbn : ${resp['isbn']}<br><br>`;;
+                                break;
+                            case 'addbook':
+                                document.getElementById(targetId).innerHTML = `<h4>Added Book Successfuly</h4>`;
+                                break;
+                            case 'update':
+                                document.getElementById(targetId).innerHTML = `<h4>Updated Book Successfuly</h4>`;
+                                break;
+                            case 'addtofav':
+                                document.getElementById(targetId).innerHTML = `<h4>Added Book to Favourites</h4>`;
+                                break;
+                            case 'remfromfav':
+                                document.getElementById(targetId).innerHTML = `<h4>Removed Book from Favourites</h4>`;
+                                break;
+                            case 'getfav':
+                                htmlresp = '';
+                                resp.map((r) => {
+                                    htmlresp += `${i+1}. Book : ${r['title']}<br>Author : ${r['authors']}<br>BookID : ${r['bookID']}<br>price : ${r['price']}<br>Ratings Coutn : ${r['ratings_count']}<br>Average Rating : ${r['average_rating']}<br>Language : ${r['language_code']}<br>isbn : ${r['isbn']}<br><br>`;
+                                    i+=1;
+                                })
+                                document.getElementById(targetId).innerHTML = htmlresp;
+                                break;
+                            default:
+                                break;
+                        }
+
+                    }
+                } else if(status === 300){
+                    window.location.replace("/ecs/frontend_code/index.html")
+                }
+            };
+
+            function getCookie(cname) {
+                let name = cname + "=";
+                let decodedCookie = decodeURIComponent(document.cookie);
+                let ca = decodedCookie.split(';');
+                for(let i = 0; i <ca.length; i++) {
+                    let c = ca[i];
+                    while (c.charAt(0) === ' ') {
+                        c = c.substring(1);
+                    }
+                    if (c.indexOf(name) === 0) {
+                        return c.substring(name.length, c.length);
+                    }
+                }
+                return "";
+            }
+
+            window.onload = function(){
+                if(getCookie('token') !== ''){
+                    let xhr = new XMLHttpRequest();
+                    xhr.open("GET", "http://127.0.0.1:5000/checktoken/"+getCookie('token'),true);
+                    xhr.setRequestHeader('Access-Control-Allow-Origin','*');
+                    xhr.setRequestHeader('Access-Control-Allow-Methods','*');
+                    xhr.setRequestHeader('Access-Control-Allow-Headers','*');
+                    xhr.onload = function(e){
+                        let resp = JSON.parse(this.responseText);
+                        if (this.status === 200){
+                            if(resp.hasOwnProperty('error_code')){
+                                window.location.replace("/ecs/frontend_code/index.html");
+                            }
+                        }
+                    };
+                    xhr.send();
+                } else {
+                    window.location.replace("/ecs/frontend_code/index.html")
+                }
+            }
+        </script>
+    </div>
+</body>
+</html>

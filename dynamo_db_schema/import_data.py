@@ -3,7 +3,7 @@ import boto3
 import time
 
 table_name = 'data'
-with open("dynamoSetup/data.json", encoding="utf8") as f:
+with open("dynamo_db_schema/data.json", encoding="utf8") as f:
     json_data = json.load(f)
 
 ddb_client = boto3.client("dynamodb", endpoint_url='http://localhost:8000')

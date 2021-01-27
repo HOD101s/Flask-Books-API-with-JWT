@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>ECS : Login</title>
+</head>
+<body>
+    <div class="content">
+        <h1>Login</h1>
+        <h4 id="apiresponse"></h4>
+        <form method="POST" action="javascript:login()" autocomplete="off" id="loginform">
+            <input type="text" name="username" id="username" placeholder="username" required>
+            <input type="text" name="password" id="password" placeholder="password" required>
+            <input type="submit" value="login">
+        </form>
+    </div>
+
+    <p>Use User1 and pass1 or use add_user endpoint to create user. Refer docs</p>
+    <script>
+
+        window.onload = function(){
+            if(getCookie('token') != ''){
+                let xhr = new XMLHttpRequest();
+                xhr.open("GET", "http://127.0.0.1:5000/checktoken/"+getCookie('token'),true);
+                xhr.setRequestHeader('Access-Control-Allow-Origin','*');
+                xhr.setRequestHeader('Access-Control-Allow-Methods','*');
+                xhr.setRequestHeader('Access-Control-Allow-Headers','*');
+                xhr.onload = function(e){
+                    let resp = JSON.parse(this.responseText);
+                    if (this.status === 200){
+                        if(!resp.hasOwnProperty('error_code')){
+                            window.location.replace("/ecs/frontend_code/home.html");
+                        }
+                    }
+                };
+                xhr.send();
+            }
+        }
+
+        function login(){
+            let data = "username="+encodeURI(document.getElementById('username').value)+"&password="+encodeURI(document.getElementById('password').value);
+            console.log(data);
+            let xhr = new XMLHttpRequest();
+            xhr.open("POST", "http://127.0.0.1:5000/login",true);
+            xhr.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
+            xhr.setRequestHeader('Access-Control-Allow-Origin','*');
+            xhr.setRequestHeader('Access-Control-Allow-Methods','POST');
+            xhr.setRequestHeader('Access-Control-Allow-Headers','*');
+            xhr.onload = function(e){
+                let resp = JSON.parse(this.responseText);
+                if (this.status === 200){
+                    if(resp.hasOwnProperty('error_code')){
+                        document.getElementById('apiresponse').innerText = resp['message'];
+                    } else {
+                        document.cookie = "token="+resp['token'];
+                        window.location.replace("/ecs/frontend_code/home.html");
+                    }
+                } else {
+                    document.getElementById('apiresponse').innerText = resp['message'];
+                }
+            };
+            xhr.send(data);
+        }
+
+        function getCookie(cname) {
+            var name = cname + "=";
+            var ca = document.cookie.split(';');
+            for(var i = 0; i < ca.length; i++) {
+                var c = ca[i];
+                while (c.charAt(0) == ' ') {
+                c = c.substring(1);
+                }
+                if (c.indexOf(name) == 0) {
+                return c.substring(name.length, c.length);
+                }
+            }
+            return "";
+        }
+
+    </script>
+</body>
+</html>

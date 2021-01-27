@@ -138,5 +138,5 @@ if __name__ == "__main__":
     test_update_book()
     test_add_fav_get_fav()
     test_rem_fav_get_fav()
-    print(f'Token for test : {token}')
+    print(f'Token used for tests : {token}')
     print('Passed All Tests')

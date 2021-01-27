@@ -15,7 +15,7 @@ app.config['SECRET_KEY'] = 'thisissecret'
 
 ddb = boto3.resource('dynamodb', endpoint_url='http://localhost:8000')
 usertable = ddb.Table('datausers')
-bookstable = ddb.Table('data2')
+bookstable = ddb.Table('data')
 
 
 # for token authentication
@@ -56,7 +56,8 @@ def login():
         )
         if query["Items"]:
             token = jwt.encode({'username': request.form['username'], 'id': query["Items"][0]['id'],
-                        'exp': datetime.datetime.utcnow() + datetime.timedelta(minutes=15)}, app.config['SECRET_KEY'])
+                                'exp': datetime.datetime.utcnow() + datetime.timedelta(minutes=15)},
+                               app.config['SECRET_KEY'])
             return jsonify({'token': token, 'message': 'token generated'}), 200
         return jsonify({'message': 'failed to authenticate', 'error_code': 'Failed Auth'}), 200
     except:
@@ -86,7 +87,7 @@ def get_books(**kwargs):
             else:
                 size = int(size)
             first_index = size * (page - 1)
-            return jsonify(query['Items'][first_index:first_index+size]), 200
+            return jsonify(query['Items'][first_index:first_index + size]), 200
         else:
             return jsonify({'message': 'No matches on filter', 'error_code': 'No Match'}), 200
     except:
@@ -116,14 +117,14 @@ def add_book(**kwargs):
         # build book info dict and add to bookstable
         bookstable.put_item(
             Item={
-              "bookID": uuid.uuid4().hex,
-              "title": request.form['addtitle'],
-              "authors": request.form['addauthor'],
-              "average_rating": request.form['addrating'],
-              "isbn": request.form['addisbn'],
-              "language_code": request.form['addlangcode'],
-              "ratings_count": request.form['addratingcount'],
-              "price": request.form['addprice']
+                "bookID": uuid.uuid4().hex,
+                "title": request.form['addtitle'],
+                "authors": request.form['addauthor'],
+                "average_rating": request.form['addrating'],
+                "isbn": request.form['addisbn'],
+                "language_code": request.form['addlangcode'],
+                "ratings_count": request.form['addratingcount'],
+                "price": request.form['addprice']
             }
         )
         return jsonify({'message': 'added book'}), 200
@@ -145,13 +146,15 @@ def update_book(**kwargs):
 
         # build update dict
         updatedict = {
-            ":newtitle": request.form['uptitle'] if request.form['uptitle']!='' else query['Items'][0]['title'],
-            ":auth": request.form['upauthor'] if request.form['upauthor']!='' else query['Items'][0]['authors'],
-            ":rat": request.form['uprating'] if request.form['uprating']!='' else query['Items'][0]['average_rating'],
-            ":isbn": request.form['upisbn'] if request.form['upisbn']!='' else query['Items'][0]['isbn'],
-            ":lang": request.form['uplangcode'] if request.form['uplangcode']!='' else query['Items'][0]['language_code'],
-            ":ratcnt": request.form['upratingcount'] if request.form['upratingcount']!='' else query['Items'][0]['ratings_count'],
-            ":price": request.form['upprice'] if request.form['upprice']!='' else query['Items'][0]['price']
+            ":newtitle": request.form['uptitle'] if request.form['uptitle'] != '' else query['Items'][0]['title'],
+            ":auth": request.form['upauthor'] if request.form['upauthor'] != '' else query['Items'][0]['authors'],
+            ":rat": request.form['uprating'] if request.form['uprating'] != '' else query['Items'][0]['average_rating'],
+            ":isbn": request.form['upisbn'] if request.form['upisbn'] != '' else query['Items'][0]['isbn'],
+            ":lang": request.form['uplangcode'] if request.form['uplangcode'] != '' else query['Items'][0][
+                'language_code'],
+            ":ratcnt": request.form['upratingcount'] if request.form['upratingcount'] != ''
+            else query['Items'][0]['ratings_count'],
+            ":price": request.form['upprice'] if request.form['upprice'] != '' else query['Items'][0]['price']
         }
 
         # update item
@@ -264,6 +267,20 @@ def get_favourite(**kwargs):
         )
         resp.append(query['Items'][0])
     return jsonify(resp), 200
+
+
+@app.route('/add_user', methods=['GET'])
+def add_user(**kwargs):
+    try:
+        usertable.put_item(
+            Item={
+                'id': uuid.uuid4().hex,
+                'username': request.args.get('username'),
+                'password': hashlib.sha256(request.args.get('password').encode('utf-8')).hexdigest()
+            })
+        return jsonify({'message': 'Added User'}), 200
+    except:
+        return jsonify({'message': 'failed to connect to db'}), 500
 
 
 if __name__ == '__main__':
